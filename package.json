@@ -1,0 +1,37 @@
+{
+  "name": "game-host-bot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@canvas/image": "^1.0.1",
+    "@discordjs/rest": "0.1.0-canary.0",
+    "cron": "^1.8.2",
+    "d3-node": "^2.2.3",
+    "d3node-barchart": "^0.1.1",
+    "discord-api-types": "^0.24.0",
+    "discord.js": "^13.2.0",
+    "dotenv": "^10.0.0",
+    "fix-utf8": "^1.1.1",
+    "is-ip": "^3.1.0",
+    "is-valid-domain": "^0.1.2",
+    "jsdom": "^18.0.0",
+    "mcquery": "^1.0.3",
+    "minecraft-query": "^1.0.9",
+    "nodeplotlib": "^0.7.6",
+    "plotly": "^1.0.6",
+    "plotly.js": "^2.5.1",
+    "plotly.js-basic-dist": "^2.5.1",
+    "sharp": "^0.29.2",
+    "source-server-query": "^1.0.1",
+    "sqlite3": "^5.0.2",
+    "utf8": "^3.0.0",
+    "whois": "^2.13.7"
+  }
+}
