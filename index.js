@@ -85,6 +85,9 @@ client.on("interactionCreate", async (interaction) => {
                     let r;
                     try {
                         r = await query.info(ip, port, 2000);
+                        if(r instanceof Error) {
+                            throw r;
+                        }
                     } catch(e) {
                         const embed = new discord.MessageEmbed()
                             .setTitle("Error!")
@@ -295,6 +298,33 @@ client.on("interactionCreate", async (interaction) => {
             interaction.reply({ content: 'Нажмите чтобы добавить на сервер', components: [row], ephemeral: true });
             break;
         }
+        case "remove": {
+            const member = await interaction.member.fetch();
+            if(!member.permissions.has('ADMINISTRATOR')) {
+                const embed = new discord.MessageEmbed()
+                    .setTitle("Error!")
+                    .setDescription("No access!")
+                    .setColor(EMBED_COLORS.ERROR);
+                interaction.reply({embeds: [embed], ephemeral: true});
+                return;
+            }
+            db.run("DELETE FROM servers WHERE id = ?", interaction.options.getNumber("id"), (err) => {
+                if(err) {
+                    const embed = new discord.MessageEmbed()
+                        .setTitle("Error!")
+                        .setDescription("Failed to remove server!")
+                        .setColor(EMBED_COLORS.ERROR);
+                    interaction.reply({embeds: [embed], ephemeral: true});
+                    return;
+                }
+                const embed = new discord.MessageEmbed()
+                    .setTitle("Success!")
+                    .setDescription("Successfully removed server from database!")
+                    .setColor(EMBED_COLORS.OK);
+                interaction.reply({embeds: [embed], ephemeral: true});
+                return;
+            })
+        }
     }
 })
 
@@ -331,7 +361,6 @@ client.once('ready', async () => {
         })
     }, null, true);
     new cron.CronJob("*/5 * * * *", () => {
-        console.log("updating");
         db.serialize(() => {
             db.run(`DELETE FROM server_statuses WHERE date < ${(Date.now() / 1000) - 86400}`);
             db.each("SELECT * FROM servers", async (err, row) => {
@@ -405,9 +434,7 @@ async function generateChart(data,max_players) {
                 const graphDiv = document.getElementById('gd')
                 const json = '${JSON.stringify({data: [data],layout: {bargap:0,plot_bgcolor:"#2f3136",paper_bgcolor:"#2f3136",margin:{b:20,l:20,r:30,t:30},font:{color:"#ffffff"},yaxis:(max_players ? {range:[0,max_players]} : null),xaxis:{type:"date"}}})}';
                 Plotly.newPlot(graphDiv, JSON.parse(json));
-                console.log("Test3");
                 Plotly.toImage(graphDiv, {format: 'png', width: 1000, height: 800}).then((dataUrl) => {
-                    console.log("Test4");
                     window.loadedImage(dataUrl);
                 })
             </script>
@@ -427,7 +454,6 @@ async function generateChart(data,max_players) {
         };
         const dataUrl = await new Promise(resolve => {
             dom.window.loadedImage = (_dataUrl) => {
-                console.log(_dataUrl);
                 resolve(_dataUrl)
             }
         })
