@@ -46,7 +46,7 @@ client.on("interactionCreate", async (interaction) => {
     switch(interaction.commandName) {
         case "add": {
             const member = await interaction.member.fetch();
-            if(!member.hasPermission('ADMINISTRATOR')) {
+            if(!member.permissions.has('ADMINISTRATOR')) {
                 const embed = new discord.MessageEmbed()
                     .setTitle("Error!")
                     .setDescription("No access!")
