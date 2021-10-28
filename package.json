@@ -16,6 +16,7 @@
     "discord.js": "^13.2.0",
     "dotenv": "^10.0.0",
     "fix-utf8": "^1.1.1",
+    "is-hexcolor": "^1.0.0",
     "is-ip": "^3.1.0",
     "is-valid-domain": "^0.1.2",
     "jsdom": "^18.0.0",

@@ -13,6 +13,7 @@ const JSDOM = require("jsdom");
 const { implSymbol } = require("jsdom/lib/jsdom/living/generated/utils.js")
 const fs = require("fs");
 const whois = require("whois");
+const isHexcolor = require('is-hexcolor')
 const regSlash = require("./regSlash");
 
 const EMBED_COLORS = {
@@ -35,8 +36,9 @@ const db = new sqlite3.Database("servers.db", sqlite3.OPEN_READWRITE | sqlite3.O
         console.log("Failed to create servers db");
         process.exit(1);
     }
-    db.run("CREATE TABLE IF NOT EXISTS servers (id INTEGER PRIMARY KEY, type INTEGER, ip TEXT, port INTEGER, ip_input TEXT, message_id TEXT, channel_id TEXT)");
-    db.run("CREATE TABLE IF NOT EXISTS server_statuses (id INTEGER, players INTEGER, date INTEGER)")
+    db.run("CREATE TABLE IF NOT EXISTS servers (id INTEGER PRIMARY KEY, type INTEGER, ip TEXT, port INTEGER, ip_input TEXT, message_id TEXT, channel_id TEXT, guild_id TEXT)");
+    db.run("CREATE TABLE IF NOT EXISTS server_statuses (id INTEGER, players INTEGER, date INTEGER)");
+    db.run("CREATE TABLE IF NOT EXISTS servers_settings (id INTEGER PRIMARY KEY, title TEXT, graph_enabled BOOLEAN, players_enabled BOOLEAN, graph_color TEXT)");
 })
 
 const client = new discord.Client({ intents: [discord.Intents.FLAGS.GUILDS] });
@@ -122,13 +124,22 @@ client.on("interactionCreate", async (interaction) => {
             const channel = await interaction.channel.fetch();
             const msg = await channel.send({embeds: [embed]});
             db.serialize(() => {
-                db.run(`INSERT INTO servers(type,ip,port,ip_input,message_id,channel_id) VALUES(?,?,?,?,?,?)`, [type_int,ip.toLowerCase(),port,ip_unsplit,msg.id,msg.channel.id], (err) => {
-                    if(err) {
-                        console.log(err);
-                        interaction.reply({content: "Failed to add the listener!", ephemeral: true});
-                        return;
-                    }
-                });
+                db.parallelize(() => {
+                    db.run(`INSERT INTO servers(type,ip,port,ip_input,message_id,channel_id,guild_id) VALUES(?,?,?,?,?,?,?)`, [type_int,ip.toLowerCase(),port,ip_unsplit,msg.id,msg.channel.id,msg.guild.id], (err) => {
+                        if(err) {
+                            console.log(err);
+                            interaction.reply({content: "Failed to add the listener!", ephemeral: true});
+                            return;
+                        }
+                    });
+                    db.run(`INSERT INTO servers_settings(id, title, graph_enabled, players_enabled, graph_color) VALUES(?,?,?,?,?)`, [type_int,"Информация о сервере s5.yufu.us:27019",true,true,"#1f77b4"], (err) => {
+                        if(err) {
+                            console.log(err);
+                            interaction.reply({content: "Failed to add the listener!", ephemeral: true});
+                            return;
+                        }
+                    });
+                })
                 db.get(`SELECT id FROM servers WHERE message_id="${msg.id}"`, (err, row) => {
                     if(err) {
                         console.log(err);
@@ -300,6 +311,7 @@ client.on("interactionCreate", async (interaction) => {
             break;
         }
         case "remove": {
+            /**@type {discord.GuildMember} */
             const member = await interaction.member.fetch();
             if(!member.permissions.has('ADMINISTRATOR')) {
                 const embed = new discord.MessageEmbed()
@@ -309,22 +321,157 @@ client.on("interactionCreate", async (interaction) => {
                 interaction.reply({embeds: [embed], ephemeral: true});
                 return;
             }
-            db.run("DELETE FROM servers WHERE id = ?", interaction.options.getNumber("id"), (err) => {
-                if(err) {
+            const t = await new Promise(resolve => {
+                db.get("SELECT guild_id FROM servers WHERE id = ?", interaction.options.getNumber("id"), (err, row) => {
+                    if(err) {
+                        const embed = new discord.MessageEmbed()
+                            .setTitle("Error!")
+                            .setDescription("Failed to remove server!")
+                            .setColor(EMBED_COLORS.ERROR);
+                        interaction.reply({embeds: [embed], ephemeral: true});
+                        resolve(true);
+                        return;
+                    }
+                    if(row.guild_id !== member.guild.id) {
+                        const embed = new discord.MessageEmbed()
+                            .setTitle("Error!")
+                            .setDescription("You can't remove the server that is not in your guild!")
+                            .setColor(EMBED_COLORS.ERROR);
+                        interaction.reply({embeds: [embed], ephemeral: true});
+                        resolve(true);
+                        return;
+                    }
+                    resolve(false);
+                })
+            })
+            if(t) {
+                return;
+            }
+            db.serialize(() => {
+                db.run("DELETE FROM servers WHERE id = ?", interaction.options.getNumber("id"), (err) => {
+                    if(err) {
+                        const embed = new discord.MessageEmbed()
+                            .setTitle("Error!")
+                            .setDescription("Failed to remove server!")
+                            .setColor(EMBED_COLORS.ERROR);
+                        interaction.reply({embeds: [embed], ephemeral: true});
+                        return;
+                    }
+                })
+                db.run("DELETE FROM servers_settings WHERE id = ?", interaction.options.getNumber("id"), (err) => {
+                    if(err) {
+                        const embed = new discord.MessageEmbed()
+                            .setTitle("Error!")
+                            .setDescription("Failed to remove server!")
+                            .setColor(EMBED_COLORS.ERROR);
+                        interaction.reply({embeds: [embed], ephemeral: true});
+                        return;
+                    }
                     const embed = new discord.MessageEmbed()
-                        .setTitle("Error!")
-                        .setDescription("Failed to remove server!")
-                        .setColor(EMBED_COLORS.ERROR);
+                        .setTitle("Success!")
+                        .setDescription("Successfully removed server from database!")
+                        .setColor(EMBED_COLORS.OK);
                     interaction.reply({embeds: [embed], ephemeral: true});
                     return;
-                }
+                })
+            });
+        }
+        case "set": {
+            /**@type {discord.GuildMember} */
+            const member = await interaction.member.fetch();
+            if(!member.permissions.has('ADMINISTRATOR')) {
                 const embed = new discord.MessageEmbed()
-                    .setTitle("Success!")
-                    .setDescription("Successfully removed server from database!")
-                    .setColor(EMBED_COLORS.OK);
+                    .setTitle("Error!")
+                    .setDescription("No access!")
+                    .setColor(EMBED_COLORS.ERROR);
                 interaction.reply({embeds: [embed], ephemeral: true});
                 return;
-            })
+            }
+            switch(interaction.options.getSubcommand()) {
+                case "title": {
+                    db.run("UPDATE servers_settings SET title = ? WHERE id = ? LIMIT 1", [interaction.options.getString("title"),interaction.options.getNumber("id")], (err) => {
+                        if(err) {
+                            const embed = new discord.MessageEmbed()
+                                .setTitle("Error!")
+                                .setDescription("Failed to update the settings!")
+                                .setColor(EMBED_COLORS.ERROR);
+                            interaction.reply({embeds: [embed], ephemeral: true});
+                            return;
+                        }
+                        const embed = new discord.MessageEmbed()
+                            .setTitle("Success!")
+                            .setDescription(`Set title to ${title}!`)
+                            .setColor(EMBED_COLORS.OK);
+                        interaction.reply({embeds: [embed], ephemeral: true});
+                    });
+                    break;
+                }
+                case "graph_enabled": {
+                    db.run("UPDATE servers_settings SET graph_enabled = ? WHERE id = ? LIMIT 1", [interaction.options.getBoolean("graph_enabled"),interaction.options.getNumber("id")], (err) => {
+                        if(err) {
+                            const embed = new discord.MessageEmbed()
+                                .setTitle("Error!")
+                                .setDescription("Failed to update the settings!")
+                                .setColor(EMBED_COLORS.ERROR);
+                            interaction.reply({embeds: [embed], ephemeral: true});
+                            return;
+                        }
+                        const embed = new discord.MessageEmbed()
+                            .setTitle("Success!")
+                            .setDescription(`Set title to ${title}!`)
+                            .setColor(EMBED_COLORS.OK);
+                        interaction.reply({embeds: [embed], ephemeral: true});
+                    });
+                    break;
+                }
+                case "players_enabled": {
+                    db.run("UPDATE servers_settings SET players_enabled = ? WHERE id = ? LIMIT 1", [interaction.options.getBoolean("players_enabled"),interaction.options.getNumber("id")], (err) => {
+                        if(err) {
+                            const embed = new discord.MessageEmbed()
+                                .setTitle("Error!")
+                                .setDescription("Failed to update the settings!")
+                                .setColor(EMBED_COLORS.ERROR);
+                            interaction.reply({embeds: [embed], ephemeral: true});
+                            return;
+                        }
+                        const embed = new discord.MessageEmbed()
+                            .setTitle("Success!")
+                            .setDescription(`Set title to ${title}!`)
+                            .setColor(EMBED_COLORS.OK);
+                        interaction.reply({embeds: [embed], ephemeral: true});
+                    });
+                    break;
+                }
+                case "graph_color": {
+                    if(!isHexcolor(interaction.options.getString("graph_color"))) {
+                        if(err) {
+                            const embed = new discord.MessageEmbed()
+                                .setTitle("Error!")
+                                .setDescription("Graph_color is not a hex value!")
+                                .setColor(EMBED_COLORS.ERROR);
+                            interaction.reply({embeds: [embed], ephemeral: true});
+                            return;
+                        }
+                    }
+                    db.run("UPDATE servers_settings SET graph_color = ? WHERE id = ? LIMIT 1", [interaction.options.getString("graph_color"),interaction.options.getNumber("id")], (err) => {
+                        if(err) {
+                            const embed = new discord.MessageEmbed()
+                                .setTitle("Error!")
+                                .setDescription("Failed to update the settings!")
+                                .setColor(EMBED_COLORS.ERROR);
+                            interaction.reply({embeds: [embed], ephemeral: true});
+                            return;
+                        }
+                        const embed = new discord.MessageEmbed()
+                            .setTitle("Success!")
+                            .setDescription(`Set title to ${title}!`)
+                            .setColor(EMBED_COLORS.OK);
+                        interaction.reply({embeds: [embed], ephemeral: true});
+                    });
+                    break;
+                }
+            }
+            break;
         }
     }
 })
@@ -361,10 +508,10 @@ client.once('ready', async () => {
             }
         })
     }, null, true);
-    new cron.CronJob("*/5 * * * *", () => {
+    new cron.CronJob("*/1 * * * *", () => {
         db.serialize(() => {
             db.run(`DELETE FROM server_statuses WHERE date < ${(Date.now() / 1000) - 86400}`);
-            db.each("SELECT * FROM servers", async (err, row) => {
+            db.each("SELECT * FROM servers INNER JOIN servers_settings ON servers_settings.id = servers.id", async (err, row) => {
                 if(err) {
                     console.log("U err", err);
                     return;
@@ -374,6 +521,7 @@ client.once('ready', async () => {
                     case 0: {
                         try {
                             r = await query.info(row.ip.toLowerCase(), row.port, 2000);
+                            r.players = await query.players(row.ip.toLowerCase(), row.port, 2000);
                             db.run(`INSERT INTO server_statuses (id,players,date) VALUES(?,?,?)`,row.id,r.playersnum,(Date.now() / 1000));
                         } catch(e) {
                             r = {err: e};
@@ -428,7 +576,7 @@ client.on("guildCreate", (guild) => {
 
 client.login(process.env.token);
 
-async function generateChart(data,max_players) {
+async function generateChart(data,max_players,graph_color) {
     return new Promise(async (resolve) => {
         const map = {};
         const dom = new JSDOM.JSDOM(`
@@ -437,7 +585,7 @@ async function generateChart(data,max_players) {
             <script src="https://cdn.plot.ly/plotly-2.5.1.js"></script>
             <script>
                 const graphDiv = document.getElementById('gd')
-                const json = '${JSON.stringify({data: [data],layout: {bargap:0,plot_bgcolor:"#2f3136",paper_bgcolor:"#2f3136",margin:{b:20,l:20,r:30,t:30},font:{color:"#ffffff"},yaxis:(max_players ? {range:[0,max_players]} : null),xaxis:{type:"date"}}})}';
+                const json = '${JSON.stringify({data: [data],layout:{bargap:0,plot_bgcolor:"#2f3136",paper_bgcolor:"#2f3136",margin:{b:20,l:20,r:30,t:30},font:{color:"#ffffff"},yaxis:(max_players ? {range:[0,max_players]} : null),xaxis:{type:"date"},colorway:[graph_color]}})}';
                 Plotly.newPlot(graphDiv, JSON.parse(json));
                 Plotly.toImage(graphDiv, {format: 'png', width: 1000, height: 800}).then((dataUrl) => {
                     window.loadedImage(dataUrl);
@@ -490,29 +638,41 @@ async function generateEmbed(query_result, sql_row, chart, players_ar) {
         case 0: {
             if(query_result instanceof Error) {
                 embed
-                    .setTitle(`Информация о сервере ${sql_row.ip_input}`)
                     .addField("Название сервера:", "ERROR")
                     .addField("Карта", "ERROR", true)
                     .addField("Игра", "ERROR", true)
                     .addField("Онлайн", "ERROR"+"/"+"ERROR", true)
                     .setColor(EMBED_COLORS.ERROR)
                     .setFooter(" // yufu.us    Server offline", "https://cdn.discordapp.com/attachments/897890262506942554/901997467476852776/logo_cat.png");
-                if(chart) {
-                    chart = await generateChart(players_ar, null);
+                embed.setTitle(sql_row.title.replace(/%IP%/g, sql_row.ip_input));
+                if(chart && sql_row.graph_enabled) {
+                    chart = await generateChart(players_ar, null,sql_row.graph_color);
                     embed.setImage('attachment://chart.png');
                 }
             } else {
                 embed
-                    .setTitle(`Информация о сервере ${sql_row.ip_input}`)
                     .addField("Название сервера:", require("utf8").decode(query_result.name))
                     .addField("Карта", query_result.map, true)
                     .addField("Игра", query_result.game, true)
                     .addField("Онлайн", query_result.playersnum+"/"+query_result.maxplayers, true)
                     .setColor(EMBED_COLORS.OK)
                     .setFooter(" // yufu.us", "https://cdn.discordapp.com/attachments/897890262506942554/901997467476852776/logo_cat.png");
-                if(chart) {
-                    chart = await generateChart(players_ar,query_result.maxplayers);
+                embed.setTitle(sql_row.title.replace(/%IP%/g, sql_row.ip_input));
+                if(chart && sql_row.graph_enabled) {
+                    chart = await generateChart(players_ar,query_result.maxplayers,sql_row.graph_color);
                     embed.setImage('attachment://chart.png');
+                }
+                if(query_result.players !== null && sql_row.players_enabled) {
+                    let s = "";
+                    let s1 = "";
+                    for(const player of query_result.players) {
+                        s += player.name + "\n";
+                        s1 += player.duration + "\n";
+                    }
+                    s = s.substr(0, s.length-1);
+                    s1 = s1.substr(0, s1.length-1);
+                    embed.addField("Name:", s);
+                    embed.addField("Time:", s1);
                 }
             }
             break;
@@ -520,28 +680,28 @@ async function generateEmbed(query_result, sql_row, chart, players_ar) {
         case 1: {
             if(query_result instanceof Error) {
                 embed
-                    .setTitle(`Информация о сервере ${sql_row.ip_input}`)
                     .addField("MOTD сервера:", "ERROR")
                     .addField("Игра:", "ERROR", true)
                     .addField("Версия:", "ERROR", true)
                     .addField("Онлайн:", "ERROR"+"/"+"ERROR", true)
                     .setColor(EMBED_COLORS.ERROR)
                     .setFooter(" // yufu.us    Server offline", "https://cdn.discordapp.com/attachments/897890262506942554/901997467476852776/logo_cat.png");
-                if(chart) {
-                    chart = await generateChart(players_ar,null);
+                embed.setTitle(sql_row.title.replace(/%IP%/g, sql_row.ip_input));
+                if(chart && sql_row.graph_enabled) {
+                    chart = await generateChart(players_ar,null,sql_row.graph_color);
                     embed.setImage('attachment://chart.png');
                 }
             } else {
                 embed
-                    .setTitle(`Информация о сервере ${sql_row.ip_input}`)
                     .addField("MOTD сервера:", query_result.hostname)
                     .addField("Игра:", query_result.game_id, true)
                     .addField("Версия:", query_result.version, true)
                     .addField("Онлайн:", query_result.numplayers+"/"+query_result.maxplayers, true)
                     .setColor(EMBED_COLORS.OK)
                     .setFooter(" // yufu.us", "https://cdn.discordapp.com/attachments/897890262506942554/901997467476852776/logo_cat.png");
-                if(chart) {
-                    chart = await generateChart(players_ar,query_result.maxplayers);
+                embed.setTitle(sql_row.title.replace(/%IP%/g, sql_row.ip_input));
+                if(chart && sql_row.graph_enabled) {
+                    chart = await generateChart(players_ar,query_result.maxplayers,sql_row.graph_color);
                     embed.setImage('attachment://chart.png');
                 }
             }
