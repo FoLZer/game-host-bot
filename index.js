@@ -483,7 +483,7 @@ async function generateEmbed(query_result, sql_row, chart, players_ar) {
     const embed = new discord.MessageEmbed();
     switch(sql_row.type) {
         case 0: {
-            if(query_result.err) {
+            if(query_result instanceof Error) {
                 embed
                     .setTitle(`Информация о сервере ${sql_row.ip_input}`)
                     .addField("Название сервера:", "ERROR")
@@ -513,7 +513,7 @@ async function generateEmbed(query_result, sql_row, chart, players_ar) {
             break;
         }
         case 1: {
-            if(query_result.err) {
+            if(query_result instanceof Error) {
                 embed
                     .setTitle(`Информация о сервере ${sql_row.ip_input}`)
                     .addField("MOTD сервера:", "ERROR")
