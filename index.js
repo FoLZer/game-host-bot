@@ -401,7 +401,7 @@ client.on("interactionCreate", async (interaction) => {
                         }
                         const embed = new discord.MessageEmbed()
                             .setTitle("Success!")
-                            .setDescription(`Set title to ${title}!`)
+                            .setDescription(`Set title to ${interaction.options.getString("title")}!`)
                             .setColor(EMBED_COLORS.OK);
                         interaction.reply({embeds: [embed], ephemeral: true});
                     });
@@ -420,7 +420,7 @@ client.on("interactionCreate", async (interaction) => {
                         }
                         const embed = new discord.MessageEmbed()
                             .setTitle("Success!")
-                            .setDescription(`Set title to ${title}!`)
+                            .setDescription(`Set graph_enabled to ${interaction.options.getBoolean("graph_enabled")}!`)
                             .setColor(EMBED_COLORS.OK);
                         interaction.reply({embeds: [embed], ephemeral: true});
                     });
@@ -439,7 +439,7 @@ client.on("interactionCreate", async (interaction) => {
                         }
                         const embed = new discord.MessageEmbed()
                             .setTitle("Success!")
-                            .setDescription(`Set title to ${title}!`)
+                            .setDescription(`Set players_enabled to ${interaction.options.getBoolean("players_enabled")}!`)
                             .setColor(EMBED_COLORS.OK);
                         interaction.reply({embeds: [embed], ephemeral: true});
                     });
@@ -466,7 +466,7 @@ client.on("interactionCreate", async (interaction) => {
                         }
                         const embed = new discord.MessageEmbed()
                             .setTitle("Success!")
-                            .setDescription(`Set title to ${title}!`)
+                            .setDescription(`Set graph_color to ${interaction.options.getString("graph_color")}!`)
                             .setColor(EMBED_COLORS.OK);
                         interaction.reply({embeds: [embed], ephemeral: true});
                     });
