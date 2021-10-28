@@ -84,7 +84,7 @@ client.on("interactionCreate", async (interaction) => {
                     port = ip_unsplit.includes(":") ? Number(ip_unsplit.split(":")[1]) : 27015
                     let r;
                     try {
-                        r = await query.info(ip, port, 2000);
+                        r = await query.info(ip.toLowerCase(), port, 2000);
                         if(r instanceof Error) {
                             throw r;
                         }
@@ -170,7 +170,7 @@ client.on("interactionCreate", async (interaction) => {
                     const port = ip_unsplit.includes(":") ? Number(ip_unsplit.split(":")[1]) : 27015
                     let r;
                     try {
-                        r = await query.info(ip, port, 2000);
+                        r = await query.info(ip.toLowerCase(), port, 2000);
                         if(r instanceof Error) {
                             throw r;
                         }
