@@ -1,8 +1,8 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 
 const data = new SlashCommandBuilder()
-	.setName('info')
-	.setDescription('Querries server info and outputs it')
+	.setName('remove')
+	.setDescription('Removes server from database by ID')
 	.addNumberOption(option =>
         option.setName('id')
 			.setDescription('ID of the server in the database')
