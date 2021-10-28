@@ -389,8 +389,9 @@ client.on("interactionCreate", async (interaction) => {
             }
             switch(interaction.options.getSubcommand()) {
                 case "title": {
-                    db.run("UPDATE servers_settings SET title = ? WHERE id = ? LIMIT 1", [interaction.options.getString("title"),interaction.options.getNumber("id")], (err) => {
+                    db.run("UPDATE servers_settings SET title = ? WHERE id = ?", [interaction.options.getString("title"),interaction.options.getNumber("id")], (err) => {
                         if(err) {
+                            console.log(err)
                             const embed = new discord.MessageEmbed()
                                 .setTitle("Error!")
                                 .setDescription("Failed to update the settings!")
@@ -407,8 +408,9 @@ client.on("interactionCreate", async (interaction) => {
                     break;
                 }
                 case "graph_enabled": {
-                    db.run("UPDATE servers_settings SET graph_enabled = ? WHERE id = ? LIMIT 1", [interaction.options.getBoolean("graph_enabled"),interaction.options.getNumber("id")], (err) => {
+                    db.run("UPDATE servers_settings SET graph_enabled = ? WHERE id = ?", [interaction.options.getBoolean("graph_enabled"),interaction.options.getNumber("id")], (err) => {
                         if(err) {
+                            console.log(err)
                             const embed = new discord.MessageEmbed()
                                 .setTitle("Error!")
                                 .setDescription("Failed to update the settings!")
@@ -425,8 +427,9 @@ client.on("interactionCreate", async (interaction) => {
                     break;
                 }
                 case "players_enabled": {
-                    db.run("UPDATE servers_settings SET players_enabled = ? WHERE id = ? LIMIT 1", [interaction.options.getBoolean("players_enabled"),interaction.options.getNumber("id")], (err) => {
+                    db.run("UPDATE servers_settings SET players_enabled = ? WHERE id = ?", [interaction.options.getBoolean("players_enabled"),interaction.options.getNumber("id")], (err) => {
                         if(err) {
+                            console.log(err)
                             const embed = new discord.MessageEmbed()
                                 .setTitle("Error!")
                                 .setDescription("Failed to update the settings!")
@@ -444,17 +447,16 @@ client.on("interactionCreate", async (interaction) => {
                 }
                 case "graph_color": {
                     if(!isHexcolor(interaction.options.getString("graph_color"))) {
-                        if(err) {
-                            const embed = new discord.MessageEmbed()
-                                .setTitle("Error!")
-                                .setDescription("Graph_color is not a hex value!")
-                                .setColor(EMBED_COLORS.ERROR);
-                            interaction.reply({embeds: [embed], ephemeral: true});
-                            return;
-                        }
+                        const embed = new discord.MessageEmbed()
+                            .setTitle("Error!")
+                            .setDescription("Graph_color is not a hex value!")
+                            .setColor(EMBED_COLORS.ERROR);
+                        interaction.reply({embeds: [embed], ephemeral: true});
+                        return;
                     }
-                    db.run("UPDATE servers_settings SET graph_color = ? WHERE id = ? LIMIT 1", [interaction.options.getString("graph_color"),interaction.options.getNumber("id")], (err) => {
+                    db.run("UPDATE servers_settings SET graph_color = ? WHERE id = ?", [interaction.options.getString("graph_color"),interaction.options.getNumber("id")], (err) => {
                         if(err) {
+                            console.log(err)
                             const embed = new discord.MessageEmbed()
                                 .setTitle("Error!")
                                 .setDescription("Failed to update the settings!")
