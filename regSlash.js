@@ -11,16 +11,18 @@ for (const file of commandFiles) {
 	commands.push(command.data.toJSON());
 }
 
-module.exports = async (guildId) => {
+module.exports = async (guildId, doDeletePrev) => {
 	try {
 		console.log('Started refreshing application (/) commands.');
-		const data = await rest.get(Routes.applicationGuildCommands(process.env.client_id, guildId));
-		const promises = [];
-        for (const command of data) {
-            const deleteUrl = `${Routes.applicationGuildCommands(process.env.client_id, guildId)}/${command.id}`;
-            promises.push(rest.delete(deleteUrl));
-        }
-		await Promise.all(promises);
+		if(doDeletePrev) {
+			const data = await rest.get(Routes.applicationGuildCommands(process.env.client_id, guildId));
+			const promises = [];
+			for (const command of data) {
+				const deleteUrl = `${Routes.applicationGuildCommands(process.env.client_id, guildId)}/${command.id}`;
+				promises.push(rest.delete(deleteUrl));
+			}
+			await Promise.all(promises);
+		}
 
 		await rest.put(
             Routes.applicationGuildCommands(process.env.client_id, guildId),

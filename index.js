@@ -13,6 +13,7 @@ const JSDOM = require("jsdom");
 const { implSymbol } = require("jsdom/lib/jsdom/living/generated/utils.js")
 const fs = require("fs");
 const whois = require("whois");
+const regSlash = require("./regSlash");
 
 const EMBED_COLORS = {
     OK: "#3a974c",
@@ -332,7 +333,7 @@ client.once('ready', async () => {
 	console.log('Ready!');
     const guilds = await client.guilds.fetch();
     for(guild of guilds.values()) {
-        reqSlash(guild.id);
+        reqSlash(guild.id, true);
     }
     new cron.CronJob("*/30 * * * * *", () => {
         db.run(`DELETE FROM server_statuses WHERE date < ${(Date.now() / 1000) - 86400}`)
@@ -420,6 +421,10 @@ client.once('ready', async () => {
         });
     }, null, true);
 });
+
+client.on("guildCreate", (guild) => {
+    regSlash(guild.id, false);
+})
 
 client.login(process.env.token);
 
