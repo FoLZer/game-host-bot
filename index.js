@@ -99,7 +99,7 @@ client.on("interactionCreate", async (interaction) => {
                         interaction.reply({embeds: [embed], ephemeral: true});
                         return;
                     }
-                    [embed] = await generateEmbed(r, {ip_input: ip_unsplit, type: type_int}, false);
+                    [embed] = await generateEmbed(r, {ip_input: ip_unsplit, type: type_int, title: "Информация о сервере %IP%"}, false);
                     break;
                 }
                 case 1: {
@@ -116,7 +116,7 @@ client.on("interactionCreate", async (interaction) => {
                         interaction.reply({embeds: [embed], ephemeral: true});
                         return;
                     }
-                    [embed] = await generateEmbed(r, {ip_input: ip_unsplit, type: type_int}, false);
+                    [embed] = await generateEmbed(r, {ip_input: ip_unsplit, type: type_int, title: "Информация о сервере %IP%"}, false);
                     break;
                 }
             }
@@ -132,7 +132,7 @@ client.on("interactionCreate", async (interaction) => {
                             return;
                         }
                     });
-                    db.run(`INSERT INTO servers_settings(id, title, graph_enabled, players_enabled, graph_color) VALUES(?,?,?,?,?)`, [type_int,"Информация о сервере s5.yufu.us:27019",true,true,"#1f77b4"], (err) => {
+                    db.run(`INSERT INTO servers_settings(id, title, graph_enabled, players_enabled, graph_color) VALUES(?,?,?,?,?)`, [type_int,"Информация о сервере %IP%",true,true,"#1f77b4"], (err) => {
                         if(err) {
                             console.log(err);
                             interaction.reply({content: "Failed to add the listener!", ephemeral: true});
@@ -194,7 +194,7 @@ client.on("interactionCreate", async (interaction) => {
                         interaction.reply({embeds: [emb], ephemeral: true});
                         return;
                     }
-                    [embed] = await generateEmbed(r, {ip_input: ip_unsplit, type: type_int}, false);
+                    [embed] = await generateEmbed(r, {ip_input: ip_unsplit, type: type_int, title: "Информация о сервере %IP%"}, false);
                     break;
                 }
                 case 1: {
@@ -217,7 +217,7 @@ client.on("interactionCreate", async (interaction) => {
                         interaction.reply({embeds: [emb], ephemeral: true});
                         return;
                     }
-                    [embed] = await generateEmbed(r, {ip_input: ip_unsplit, type: type_int}, false);
+                    [embed] = await generateEmbed(r, {ip_input: ip_unsplit, type: type_int, title: "Информация о сервере %IP%"}, false);
                     break;
                 }
             }
