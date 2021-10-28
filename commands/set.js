@@ -11,8 +11,9 @@ const data = new SlashCommandBuilder()
                     .setDescription('ID of the server in the database')
                     .setRequired(true))
             .addStringOption(option =>
-                option.setDescription('Use %IP% to put the ip inside the title')
-                .setRequired(true)))
+                option.setName("title")
+                    .setDescription('Use %IP% to put the ip inside the title')
+                    .setRequired(true)))
     .addSubcommand(sub =>
         sub.setName('graph_enabled')
             .setDescription('Show graph inside the embed?')
@@ -21,7 +22,9 @@ const data = new SlashCommandBuilder()
                     .setDescription('ID of the server in the database')
                     .setRequired(true))
             .addBooleanOption(option =>
-                option.setRequired(true)))
+                option.setName("graph_enabled")
+                    .setDescription("Show graph inside the embed?")
+                    .setRequired(true)))
     .addSubcommand(sub =>
         sub.setName('players_enabled')
             .setDescription('Show players inside the embed?')
@@ -30,7 +33,9 @@ const data = new SlashCommandBuilder()
                     .setDescription('ID of the server in the database')
                     .setRequired(true))
             .addBooleanOption(option =>
-                option.setRequired(true)))
+                option.setName("players_enabled")
+                    .setDescription("Show players inside the embed?")
+                    .setRequired(true)))
     .addSubcommand(sub =>
         sub.setName('graph_color')
             .setDescription('Sets the color of the graph')
@@ -39,7 +44,8 @@ const data = new SlashCommandBuilder()
                     .setDescription('ID of the server in the database')
                     .setRequired(true))
             .addStringOption(option => 
-                option.setDescription("Hex value of the color")
-                    .setRequired(true)))
+                option.setName("graph_color")
+                    .setDescription("Hex value of the color")
+                    .setRequired(true)));
 
 module.exports = {data};
