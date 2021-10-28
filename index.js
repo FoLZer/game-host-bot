@@ -121,7 +121,7 @@ client.on("interactionCreate", async (interaction) => {
             const channel = await interaction.channel.fetch();
             const msg = await channel.send({embeds: [embed]});
             db.serialize(() => {
-                db.run(`INSERT INTO servers(type,ip,port,ip_input,message_id,channel_id) VALUES(?,?,?,?,?,?)`, [type_int,ip,port,ip_unsplit,msg.id,msg.channel.id], (err) => {
+                db.run(`INSERT INTO servers(type,ip,port,ip_input,message_id,channel_id) VALUES(?,?,?,?,?,?)`, [type_int,ip.toLowerCase(),port,ip_unsplit,msg.id,msg.channel.id], (err) => {
                     if(err) {
                         console.log(err);
                         interaction.reply({content: "Failed to add the listener!", ephemeral: true});
@@ -344,7 +344,7 @@ client.once('ready', async () => {
             try {
                 switch(row.type) {
                     case 0: {
-                        const r = await query.info(row.ip, row.port, 2000);
+                        const r = await query.info(row.ip.toLowerCase(), row.port, 2000);
                         db.run(`INSERT INTO server_statuses (id,players,date) VALUES(?,?,?)`,row.id,r.playersnum,(Date.now() / 1000));
                         break;
                     }
@@ -372,7 +372,7 @@ client.once('ready', async () => {
                 switch(row.type) {
                     case 0: {
                         try {
-                            r = await query.info(row.ip, row.port, 2000);
+                            r = await query.info(row.ip.toLowerCase(), row.port, 2000);
                             db.run(`INSERT INTO server_statuses (id,players,date) VALUES(?,?,?)`,row.id,r.playersnum,(Date.now() / 1000));
                         } catch(e) {
                             r = {err: e};
