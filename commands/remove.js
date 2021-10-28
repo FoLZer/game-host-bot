@@ -6,6 +6,6 @@ const data = new SlashCommandBuilder()
 	.addNumberOption(option =>
         option.setName('id')
 			.setDescription('ID of the server in the database')
-			.setRequired(true)
+			.setRequired(true));
 
 module.exports = {data};
