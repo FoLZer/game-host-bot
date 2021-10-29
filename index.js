@@ -717,8 +717,8 @@ async function generateEmbed(query_result, sql_row, chart, players_ar) {
                     s = s.substr(0, s.length-1);
                     s1 = s1.substr(0, s1.length-1);
                     embed.addField("Players:", "\u200b")
-                    embed.addField("Name:", `\`\`\`${s}\`\`\``, true);
-                    embed.addField("Time:", `\`\`\`${s1}\`\`\``, true);
+                    embed.addField("Name:", s.length > 0 ? `\`\`\`${s}\`\`\`` : `\`\`\`-\`\`\``, true);
+                    embed.addField("Time:", s1.length > 0 ? `\`\`\`${s1}\`\`\`` : `\`\`\`-\`\`\``, true);
                 }
             }
             break;
