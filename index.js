@@ -124,29 +124,27 @@ client.on("interactionCreate", async (interaction) => {
             const channel = await interaction.channel.fetch();
             const msg = await channel.send({embeds: [embed]});
             db.serialize(() => {
-                db.parallelize(() => {
-                    db.run(`INSERT INTO servers(type,ip,port,ip_input,message_id,channel_id,guild_id) VALUES(?,?,?,?,?,?,?)`, [type_int,ip.toLowerCase(),port,ip_unsplit,msg.id,msg.channel.id,msg.guild.id], (err) => {
-                        if(err) {
-                            console.log(err);
-                            interaction.reply({content: "Failed to add the listener!", ephemeral: true});
-                            return;
-                        }
-                    });
-                    db.run(`INSERT INTO servers_settings(id, title, graph_enabled, players_enabled, graph_color) VALUES(?,?,?,?,?)`, [type_int,"Информация о сервере %IP%",true,true,"#1f77b4"], (err) => {
-                        if(err) {
-                            console.log(err);
-                            interaction.reply({content: "Failed to add the listener!", ephemeral: true});
-                            return;
-                        }
-                    });
-                })
+                db.run(`INSERT INTO servers(type,ip,port,ip_input,message_id,channel_id,guild_id) VALUES(?,?,?,?,?,?,?)`, [type_int,ip.toLowerCase(),port,ip_unsplit,msg.id,msg.channel.id,msg.guild.id], (err) => {
+                    if(err) {
+                        console.log(err);
+                        interaction.reply({content: "Failed to add the listener!", ephemeral: true});
+                        return;
+                    }
+                });
                 db.get(`SELECT id FROM servers WHERE message_id="${msg.id}"`, (err, row) => {
                     if(err) {
                         console.log(err);
                         interaction.reply({content: "Failed to add the listener!", ephemeral: true});
                         return;
                     }
-                    interaction.reply({content: `Added successfully! (id: ${row.id})`, ephemeral: true});
+                    db.run(`INSERT INTO servers_settings(id, title, graph_enabled, players_enabled, graph_color) VALUES(?,?,?,?,?)`, [row.id,"Информация о сервере %IP%",true,false,"#1f77b4"], (err) => {
+                        if(err) {
+                            console.log(err);
+                            interaction.reply({content: "Failed to add the listener!", ephemeral: true});
+                            return;
+                        }
+                        interaction.reply({content: `Added successfully! (id: ${row.id})`, ephemeral: true});
+                    });
                 });
             })
             break;
@@ -510,7 +508,7 @@ client.once('ready', async () => {
             }
         })
     }, null, true);
-    new cron.CronJob("*/1 * * * *", () => {
+    new cron.CronJob("*/10 * * * * *", () => {
         db.serialize(() => {
             db.run(`DELETE FROM server_statuses WHERE date < ${(Date.now() / 1000) - 86400}`);
             db.each("SELECT * FROM servers INNER JOIN servers_settings ON servers_settings.id = servers.id", async (err, row) => {
@@ -518,6 +516,7 @@ client.once('ready', async () => {
                     console.log("U err", err);
                     return;
                 }
+                return;
                 let embed, chart, r;
                 switch(row.type) {
                     case 0: {
