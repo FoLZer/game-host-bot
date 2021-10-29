@@ -14,6 +14,7 @@ const { implSymbol } = require("jsdom/lib/jsdom/living/generated/utils.js")
 const fs = require("fs");
 const whois = require("whois");
 const isHexcolor = require('is-hexcolor')
+const moment = require("moment");
 const regSlash = require("./regSlash");
 
 const EMBED_COLORS = {
@@ -711,12 +712,13 @@ async function generateEmbed(query_result, sql_row, chart, players_ar) {
                     let s1 = "";
                     for(const player of query_result.players) {
                         s += player.name + "\n";
-                        s1 += player.duration + "\n";
+                        s1 += moment.duration(player.duration, 'seconds').humanize() + "\n";
                     }
                     s = s.substr(0, s.length-1);
                     s1 = s1.substr(0, s1.length-1);
-                    embed.addField("Name:", `\`\`\`${s}\`\`\``);
-                    embed.addField("Time:", `\`\`\`${s1}\`\`\``);
+                    embed.addField("Players:", "\u200b")
+                    embed.addField("Name:", `\`\`\`${s}\`\`\``, true);
+                    embed.addField("Time:", `\`\`\`${s1}\`\`\``, true);
                 }
             }
             break;
