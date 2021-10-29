@@ -330,6 +330,15 @@ client.on("interactionCreate", async (interaction) => {
                         resolve(true);
                         return;
                     }
+                    if(!row) {
+                        const embed = new discord.MessageEmbed()
+                            .setTitle("Error!")
+                            .setDescription("The server is not found!")
+                            .setColor(EMBED_COLORS.ERROR);
+                        interaction.reply({embeds: [embed], ephemeral: true});
+                        resolve(true);
+                        return;
+                    }
                     if(row.guild_id !== member.guild.id) {
                         const embed = new discord.MessageEmbed()
                             .setTitle("Error!")
@@ -383,6 +392,41 @@ client.on("interactionCreate", async (interaction) => {
                     .setDescription("No access!")
                     .setColor(EMBED_COLORS.ERROR);
                 interaction.reply({embeds: [embed], ephemeral: true});
+                return;
+            }
+            const t = await new Promise(resolve => {
+                db.get("SELECT guild_id FROM servers WHERE id = ?", interaction.options.getNumber("id"), (err, row) => {
+                    if(err) {
+                        const embed = new discord.MessageEmbed()
+                            .setTitle("Error!")
+                            .setDescription("Failed to remove server!")
+                            .setColor(EMBED_COLORS.ERROR);
+                        interaction.reply({embeds: [embed], ephemeral: true});
+                        resolve(true);
+                        return;
+                    }
+                    if(!row) {
+                        const embed = new discord.MessageEmbed()
+                            .setTitle("Error!")
+                            .setDescription("The server is not found!")
+                            .setColor(EMBED_COLORS.ERROR);
+                        interaction.reply({embeds: [embed], ephemeral: true});
+                        resolve(true);
+                        return;
+                    }
+                    if(row.guild_id !== member.guild.id) {
+                        const embed = new discord.MessageEmbed()
+                            .setTitle("Error!")
+                            .setDescription("You can't set the server that is not in your guild!")
+                            .setColor(EMBED_COLORS.ERROR);
+                        interaction.reply({embeds: [embed], ephemeral: true});
+                        resolve(true);
+                        return;
+                    }
+                    resolve(false);
+                })
+            })
+            if(t) {
                 return;
             }
             switch(interaction.options.getSubcommand()) {
@@ -516,7 +560,6 @@ client.once('ready', async () => {
                     console.log("U err", err);
                     return;
                 }
-                return;
                 let embed, chart, r;
                 switch(row.type) {
                     case 0: {
