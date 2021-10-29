@@ -15,6 +15,7 @@ const fs = require("fs");
 const whois = require("whois");
 const isHexcolor = require('is-hexcolor')
 const moment = require("moment");
+const utf8 = require("utf8");
 const regSlash = require("./regSlash");
 
 const EMBED_COLORS = {
@@ -696,7 +697,7 @@ async function generateEmbed(query_result, sql_row, chart, players_ar) {
                 }
             } else {
                 embed
-                    .addField("Название сервера:", require("utf8").decode(query_result.name))
+                    .addField("Название сервера:", utf8.decode(query_result.name))
                     .addField("Карта", query_result.map, true)
                     .addField("Игра", query_result.game, true)
                     .addField("Онлайн", query_result.playersnum+"/"+query_result.maxplayers, true)
@@ -711,7 +712,7 @@ async function generateEmbed(query_result, sql_row, chart, players_ar) {
                     let s = "";
                     let s1 = "";
                     for(const player of query_result.players) {
-                        s += player.name + "\n";
+                        s += utf8.decode(player.name) + "\n";
                         s1 += moment.duration(Math.floor(player.duration), 'seconds').humanize() + "\n";
                     }
                     s = s.substr(0, s.length-1);
