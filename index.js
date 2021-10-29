@@ -715,8 +715,8 @@ async function generateEmbed(query_result, sql_row, chart, players_ar) {
                     }
                     s = s.substr(0, s.length-1);
                     s1 = s1.substr(0, s1.length-1);
-                    embed.addField("Name:", s);
-                    embed.addField("Time:", s1);
+                    embed.addField("Name:", `\`\`\`${s}\`\`\``);
+                    embed.addField("Time:", `\`\`\`${s1}\`\`\``);
                 }
             }
             break;
