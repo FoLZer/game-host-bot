@@ -61,70 +61,40 @@ client.on("interactionCreate", async (interaction) => {
             }
             const type = interaction.options.getString("type");
             const ip_unsplit = interaction.options.getString("ip");
-            let ip = ip_unsplit.split(":")[0];
-            if(!(isIp(ip) || isValidDomain(ip) && (!ip_unsplit.includes(":") || !isNaN(Number(ip_unsplit.split(":")[1]))))) {
-                const embed = new discord.MessageEmbed()
-                    .setTitle("Error!")
-                    .setDescription("Ip is not valid!")
-                    .setColor(EMBED_COLORS.ERROR);
-                interaction.reply({embeds: [embed], ephemeral: true});
-                return;
-            }
-            const type_int = Object.values(types).indexOf(type);
-            if(isValidDomain(ip)) {
-                try {
-                    ip = (await dns.promises.resolve(ip))[0];
-                } catch(e) {
-                    const embed = new discord.MessageEmbed()
+            let embed;
+            const ip = await parseIPorDomain(ip_unsplit.split(":")[0]);
+            if(Number.isInteger(ip)) {
+                if(ip) {
+                    embed = new discord.MessageEmbed()
                         .setTitle("Error!")
                         .setDescription("DNS could not be resolved!")
                         .setColor(EMBED_COLORS.ERROR);
                     interaction.reply({embeds: [embed], ephemeral: true});
-                    return;
+                } else {
+                    embed = new discord.MessageEmbed()
+                        .setTitle("Error!")
+                        .setDescription("Ip is not valid!")
+                        .setColor(EMBED_COLORS.ERROR);
+                    interaction.reply({embeds: [embed], ephemeral: true});
                 }
             }
-            let embed, port;
-            switch(type_int) {
-                case 0: {
-                    port = ip_unsplit.includes(":") ? Number(ip_unsplit.split(":")[1]) : 27015
-                    let r;
-                    try {
-                        r = await query.info(ip.toLowerCase(), port, 2000);
-                        if(r instanceof Error) {
-                            throw r;
-                        }
-                    } catch(e) {
-                        const embed = new discord.MessageEmbed()
-                            .setTitle("Error!")
-                            .setDescription("Query wasn't answered by server!")
-                            .setColor(EMBED_COLORS.ERROR);
-                        interaction.reply({embeds: [embed], ephemeral: true});
-                        return;
-                    }
-                    [embed] = await generateEmbed(r, {ip_input: ip_unsplit, type: type_int, title: "Информация о сервере %IP%"}, false);
-                    break;
-                }
-                case 1: {
-                    port = ip_unsplit.includes(":") ? Number(ip_unsplit.split(":")[1]) : 25565
-                    let r;
-                    try {
-                        const q = new Query({host: ip, port: port, timeout: 2000});
-                        r = await q.fullStat();
-                    } catch(e) {
-                        const embed = new discord.MessageEmbed()
-                            .setTitle("Error!")
-                            .setDescription("Query wasn't answered by server!")
-                            .setColor(EMBED_COLORS.ERROR);
-                        interaction.reply({embeds: [embed], ephemeral: true});
-                        return;
-                    }
-                    [embed] = await generateEmbed(r, {ip_input: ip_unsplit, type: type_int, title: "Информация о сервере %IP%"}, false);
-                    break;
-                }
+            const type_int = Object.values(types).indexOf(type);
+            const [err, r, port] = await queryServer(type_int, ip, ip_unsplit.includes(":"), ip_unsplit.split(":")[1]);
+            if(err) {
+                embed = new discord.MessageEmbed()
+                    .setTitle("Error!")
+                    .setDescription("Query wasn't answered by server!")
+                    .setColor(EMBED_COLORS.ERROR);
+                interaction.reply({embeds: [embed], ephemeral: true});
+                return;
             }
+            let channel;
+            [[embed],channel] = await Promise.all([
+                generateEmbed(r, {ip_input: ip_unsplit, type: type_int, title: "Информация о сервере %IP%"}, false),
+                interaction.channel.fetch()
+            ]);
             embed.setFooter(" // yufu.us", "https://cdn.discordapp.com/attachments/897890262506942554/901997467476852776/logo_cat.png");
-            const channel = await interaction.channel.fetch();
-            const msg = await channel.send({embeds: [embed]});
+            const msg = channel.send({embeds: [embed]});
             db.serialize(() => {
                 db.run(`INSERT INTO servers(type,ip,port,ip_input,message_id,channel_id,guild_id) VALUES(?,?,?,?,?,?,?)`, [type_int,ip.toLowerCase(),port,ip_unsplit,msg.id,msg.channel.id,msg.guild.id], (err) => {
                     if(err) {
@@ -154,73 +124,34 @@ client.on("interactionCreate", async (interaction) => {
         case "info": {
             const type = interaction.options.getString("type");
             const ip_unsplit = interaction.options.getString("ip");
-            let ip = ip_unsplit.split(":")[0];
-            if(!(isIp(ip) || isValidDomain(ip) && (!ip_unsplit.includes(":") || !isNaN(Number(ip_unsplit.split(":")[1]))))) {
-                const embed = new discord.MessageEmbed()
+            const ip = await parseIPorDomain(ip_unsplit.split(":")[0]);
+            let embed;
+            if(Number.isInteger(ip)) {
+                if(ip) {
+                    embed = new discord.MessageEmbed()
+                        .setTitle("Error!")
+                        .setDescription("DNS could not be resolved!")
+                        .setColor(EMBED_COLORS.ERROR);
+                    interaction.reply({embeds: [embed], ephemeral: true});
+                } else {
+                    embed = new discord.MessageEmbed()
+                        .setTitle("Error!")
+                        .setDescription("Ip is not valid!")
+                        .setColor(EMBED_COLORS.ERROR);
+                    interaction.reply({embeds: [embed], ephemeral: true});
+                }
+            }
+            const type_int = Object.values(types).indexOf(type);
+            const [err, r] = await queryServer(type_int, ip, ip_unsplit.includes(":"), ip_unsplit.split(":")[1]);
+            if(err) {
+                embed = new discord.MessageEmbed()
                     .setTitle("Error!")
-                    .setDescription("Ip is not valid!")
+                    .setDescription("Query wasn't answered by server!")
                     .setColor(EMBED_COLORS.ERROR);
                 interaction.reply({embeds: [embed], ephemeral: true});
                 return;
             }
-            let embed;
-            if(isValidDomain(ip)) {
-                try {
-                    ip = (await dns.promises.resolve(ip))[0];
-                } catch(e) {
-                    const emb = new discord.MessageEmbed()
-                        .setTitle("Error!")
-                        .setDescription("DNS could not be resolved!")
-                        .setColor(EMBED_COLORS.ERROR);
-                    interaction.reply({embeds: [emb], ephemeral: true});
-                    return;
-                }
-            }
-            const type_int = Object.values(types).indexOf(type);
-            switch(type_int) {
-                case 0: {
-                    const port = ip_unsplit.includes(":") ? Number(ip_unsplit.split(":")[1]) : 27015
-                    let r;
-                    try {
-                        r = await query.info(ip.toLowerCase(), port, 2000);
-                        if(r instanceof Error) {
-                            throw r;
-                        }
-                    } catch(e) {
-                        const emb = new discord.MessageEmbed()
-                            .setTitle("Error!")
-                            .setDescription("Query wasn't answered by server!")
-                            .setColor(EMBED_COLORS.ERROR);
-                        interaction.reply({embeds: [emb], ephemeral: true});
-                        return;
-                    }
-                    [embed] = await generateEmbed(r, {ip_input: ip_unsplit, type: type_int, title: "Информация о сервере %IP%"}, false);
-                    break;
-                }
-                case 1: {
-                    const port = ip_unsplit.includes(":") ? Number(ip_unsplit.split(":")[1]) : 25565
-                    let r;
-                    try {
-                        const q = new Query(ip, port, {timeout: 2000});
-                        await q.connect();
-                        r = await new Promise(resolve => {
-                            q.full_stat((err, a) => {
-                                if(err) throw err;
-                                resolve(a)
-                            })
-                        });
-                    } catch(e) {
-                        const emb = new discord.MessageEmbed()
-                            .setTitle("Error!")
-                            .setDescription("Query wasn't answered by server!")
-                            .setColor(EMBED_COLORS.ERROR);
-                        interaction.reply({embeds: [emb], ephemeral: true});
-                        return;
-                    }
-                    [embed] = await generateEmbed(r, {ip_input: ip_unsplit, type: type_int, title: "Информация о сервере %IP%"}, false);
-                    break;
-                }
-            }
+            [embed] = await generateEmbed(r, {ip_input: ip_unsplit, type: type_int, title: "Информация о сервере %IP%"}, false);
             embed.setFooter(" // yufu.us", "https://cdn.discordapp.com/attachments/897890262506942554/901997467476852776/logo_cat.png");
             interaction.reply({embeds: [embed]})
             break;
@@ -232,7 +163,8 @@ client.on("interactionCreate", async (interaction) => {
                 \`/info - Показывает информацию о сервере\`
                 \`/add - Добавляет сервер к списку автообновляемых серверов\`
                 \`/whois - Показывает информацию whois о сервере\`
-                \`/invite - Добавить бота на ваш сервер\``)
+                \`/invite - Добавить бота на ваш сервер\`
+                \`/set - Установка модификаций на информацию о сервере\``)
                 .setFooter(" // yufu.us", "https://cdn.discordapp.com/attachments/897890262506942554/901997467476852776/logo_cat.png")
                 .setColor(EMBED_COLORS.OTHER);
             interaction.reply({embeds: [embed], ephemeral: true});
@@ -756,4 +688,52 @@ async function generateEmbed(query_result, sql_row, chart, players_ar) {
         }
     }
     return [embed,chart];
+}
+
+async function parseIPorDomain(ip) {
+    if(!(isIp(ip) || isValidDomain(ip) && (!ip_unsplit.includes(":") || !isNaN(Number(ip_unsplit.split(":")[1]))))) {
+        return 0;
+    }
+    if(isValidDomain(ip)) {
+        try {
+            ip = (await dns.promises.resolve(ip))[0];
+        } catch(e) {
+            return 1;
+        }
+    }
+    return ip;
+}
+
+async function queryServer(type_int, ip, includes_port, port) {
+    switch(type_int) {
+        case 0: {
+            port = includes_port ? Number(ip_unsplit.split(":")[1]) : 27015
+            try {
+                r = await query.info(ip.toLowerCase(), port, 2000);
+                if(r instanceof Error) {
+                    throw r;
+                }
+            } catch(e) {
+                return [true, null, null];
+            }
+            break;
+        }
+        case 1: {
+            port = includes_port ? Number(ip_unsplit.split(":")[1]) : 25565
+            try {
+                const q = new Query({host: ip, port: port, timeout: 2000});
+                await q.connect();
+                r = await new Promise(resolve => {
+                    q.full_stat((err, a) => {
+                        if(err) throw err;
+                        resolve(a)
+                    })
+                });
+            } catch(e) {
+                return [true, null, null];
+            }
+            break;
+        }
+    }
+    return [null, r, port];
 }
