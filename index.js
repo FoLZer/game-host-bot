@@ -712,7 +712,7 @@ async function generateEmbed(query_result, sql_row, chart, players_ar) {
                     let s1 = "";
                     for(const player of query_result.players) {
                         s += player.name + "\n";
-                        s1 += moment.duration(player.duration, 'seconds').humanize() + "\n";
+                        s1 += moment.duration(Math.floor(player.duration), 'seconds').humanize() + "\n";
                     }
                     s = s.substr(0, s.length-1);
                     s1 = s1.substr(0, s1.length-1);
