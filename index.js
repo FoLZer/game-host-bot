@@ -8,9 +8,7 @@ require("dotenv").config();
 const reqSlash = require("./regSlash");
 const cron = require("cron");
 const Query = require("mcquery");
-const path = require("path");
 const JSDOM = require("jsdom");
-const fs = require("fs");
 const whois = require("whois");
 const isHexcolor = require('is-hexcolor')
 const moment = require("moment");
