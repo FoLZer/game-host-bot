@@ -28,7 +28,7 @@ const dom = new JSDOM.JSDOM(`
         }
     </script>
 </body>
-`.trim(), { runScripts: "dangerously", resources: "usable" });
+`.trim(), { runScripts: "outside-only", resources: "usable" });
 dom.window.URL.createObjectURL = () => {};
 dom.window.URL.revokeObjectURL = () => {};
 
@@ -565,17 +565,15 @@ client.on("guildCreate", (guild) => {
 client.login(process.env.token);
 
 async function generateChart(data,max_players,graph_color) {
-    return new Promise(async (resolve) => {
-        const buf = await svg2png({
-            input: dom.window.drawPlot(`${JSON.stringify({data: [data],layout:{bargap:0,plot_bgcolor:"#2f3136",paper_bgcolor:"#2f3136",margin:{b:20,l:20,r:30,t:30},font:{color:"#ffffff"},yaxis:(max_players ? {range:[0,max_players]} : null),xaxis:{type:"date"},colorway:[graph_color]}})}`),
-            "format": "png",
-            "encoding": "buffer",
-            "quality": 1,
-            "height": 800,
-            "width": 1000
-        })
-        resolve(buf);
+    const buf = await svg2png({
+        input: dom.window.drawPlot(`${JSON.stringify({data: [data],layout:{bargap:0,plot_bgcolor:"#2f3136",paper_bgcolor:"#2f3136",margin:{b:20,l:20,r:30,t:30},font:{color:"#ffffff"},yaxis:(max_players ? {range:[0,max_players]} : null),xaxis:{type:"date"},colorway:[graph_color]}})}`),
+        "format": "png",
+        "encoding": "buffer",
+        "quality": 1,
+        "height": 800,
+        "width": 1000
     })
+    return buf;
 }
 
 async function fetchPlayers(server_id) {
