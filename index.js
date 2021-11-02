@@ -10,22 +10,34 @@ const cron = require("cron");
 const Query = require("mcquery");
 const path = require("path");
 const JSDOM = require("jsdom");
-const { implSymbol } = require("jsdom/lib/jsdom/living/generated/utils.js")
 const fs = require("fs");
 const whois = require("whois");
 const isHexcolor = require('is-hexcolor')
 const moment = require("moment");
 const utf8 = require("utf8");
 const regSlash = require("./regSlash");
+const { svg2png } = require('svg-png-converter')
+
+const dom = new JSDOM.JSDOM(`
+<body>
+    <div id="gd"></div>
+    <script src="https://cdn.plot.ly/plotly-2.5.1.js"></script>
+    <script>
+        function drawPlot(json) {
+            const graphDiv = document.getElementById('gd')
+            Plotly.newPlot(graphDiv, JSON.parse(json));
+            return graphDiv.children[0].children[0].children[0].outerHTML;
+        }
+    </script>
+</body>
+`.trim(), { runScripts: "dangerously", resources: "usable" });
+dom.window.URL.createObjectURL = () => {};
+dom.window.URL.revokeObjectURL = () => {};
 
 const EMBED_COLORS = {
     OK: "#3a974c",
     ERROR: "#ce4141",
     OTHER: "#e24563"
-}
-
-if(!fs.existsSync(path.resolve(".","node_modules",".cache"))) {
-    fs.mkdirSync(path.resolve(".","node_modules",".cache"));
 }
 
 const types = {
@@ -62,7 +74,7 @@ client.on("interactionCreate", async (interaction) => {
             const type = interaction.options.getString("type");
             const ip_unsplit = interaction.options.getString("ip");
             let embed;
-            const ip = await parseIPorDomain(ip_unsplit.split(":")[0]);
+            const ip = await parseIPorDomain(ip_unsplit.split(":")[0], ip_unsplit);
             if(Number.isInteger(ip)) {
                 if(ip) {
                     embed = new discord.MessageEmbed()
@@ -94,7 +106,7 @@ client.on("interactionCreate", async (interaction) => {
                 interaction.channel.fetch()
             ]);
             embed.setFooter(" // yufu.us", "https://cdn.discordapp.com/attachments/897890262506942554/901997467476852776/logo_cat.png");
-            const msg = channel.send({embeds: [embed]});
+            const msg = await channel.send({embeds: [embed]});
             db.serialize(() => {
                 db.run(`INSERT INTO servers(type,ip,port,ip_input,message_id,channel_id,guild_id) VALUES(?,?,?,?,?,?,?)`, [type_int,ip.toLowerCase(),port,ip_unsplit,msg.id,msg.channel.id,msg.guild.id], (err) => {
                     if(err) {
@@ -124,7 +136,7 @@ client.on("interactionCreate", async (interaction) => {
         case "info": {
             const type = interaction.options.getString("type");
             const ip_unsplit = interaction.options.getString("ip");
-            const ip = await parseIPorDomain(ip_unsplit.split(":")[0]);
+            const ip = await parseIPorDomain(ip_unsplit.split(":")[0], ip_unsplit);
             let embed;
             if(Number.isInteger(ip)) {
                 if(ip) {
@@ -556,39 +568,15 @@ client.login(process.env.token);
 
 async function generateChart(data,max_players,graph_color) {
     return new Promise(async (resolve) => {
-        const map = {};
-        const dom = new JSDOM.JSDOM(`
-        <body>
-            <div id="gd"></div>
-            <script src="https://cdn.plot.ly/plotly-2.5.1.js"></script>
-            <script>
-                const graphDiv = document.getElementById('gd')
-                const json = '${JSON.stringify({data: [data],layout:{bargap:0,plot_bgcolor:"#2f3136",paper_bgcolor:"#2f3136",margin:{b:20,l:20,r:30,t:30},font:{color:"#ffffff"},yaxis:(max_players ? {range:[0,max_players]} : null),xaxis:{type:"date"},colorway:[graph_color]}})}';
-                Plotly.newPlot(graphDiv, JSON.parse(json));
-                Plotly.toImage(graphDiv, {format: 'png', width: 1000, height: 800}).then((dataUrl) => {
-                    window.loadedImage(dataUrl);
-                })
-            </script>
-        </body>
-        `, { runScripts: "dangerously", resources: "usable" });
-        dom.window.URL.createObjectURL = (blob) => {
-            const uuid = Math.random().toString(36).slice(2);
-            const pathU = path.resolve(`.`,`node_modules`,`.cache`,`${uuid}.png`);
-            fs.writeFileSync(pathU, blob[implSymbol]._buffer);
-            const url = `file://${pathU}`;
-            map[url] = pathU;
-            return url;
-        };
-        dom.window.URL.revokeObjectURL = (url) => {
-            fs.unlinkSync(map[url]);
-            delete map[url];
-        };
-        const dataUrl = await new Promise(resolve => {
-            dom.window.loadedImage = (_dataUrl) => {
-                resolve(_dataUrl)
-            }
+        const buf = await svg2png({
+            input: dom.window.drawPlot(`${JSON.stringify({data: [data],layout:{bargap:0,plot_bgcolor:"#2f3136",paper_bgcolor:"#2f3136",margin:{b:20,l:20,r:30,t:30},font:{color:"#ffffff"},yaxis:(max_players ? {range:[0,max_players]} : null),xaxis:{type:"date"},colorway:[graph_color]}})}`),
+            "format": "png",
+            "encoding": "buffer",
+            "quality": 1,
+            "height": 800,
+            "width": 1000
         })
-        resolve(Buffer.from(dataUrl.split(",")[1],"base64"));
+        resolve(buf);
     })
 }
 
@@ -690,7 +678,7 @@ async function generateEmbed(query_result, sql_row, chart, players_ar) {
     return [embed,chart];
 }
 
-async function parseIPorDomain(ip) {
+async function parseIPorDomain(ip, ip_unsplit) {
     if(!(isIp(ip) || isValidDomain(ip) && (!ip_unsplit.includes(":") || !isNaN(Number(ip_unsplit.split(":")[1]))))) {
         return 0;
     }
@@ -707,7 +695,7 @@ async function parseIPorDomain(ip) {
 async function queryServer(type_int, ip, includes_port, port) {
     switch(type_int) {
         case 0: {
-            port = includes_port ? Number(ip_unsplit.split(":")[1]) : 27015
+            port = includes_port ? Number(port) : 27015
             try {
                 r = await query.info(ip.toLowerCase(), port, 2000);
                 if(r instanceof Error) {
@@ -719,7 +707,7 @@ async function queryServer(type_int, ip, includes_port, port) {
             break;
         }
         case 1: {
-            port = includes_port ? Number(ip_unsplit.split(":")[1]) : 25565
+            port = includes_port ? Number(port) : 25565
             try {
                 const q = new Query({host: ip, port: port, timeout: 2000});
                 await q.connect();

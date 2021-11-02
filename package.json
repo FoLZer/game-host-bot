@@ -24,6 +24,7 @@
     "moment": "^2.29.1",
     "source-server-query": "^1.0.1",
     "sqlite3": "^5.0.2",
+    "svg-png-converter": "^0.0.9",
     "utf8": "^3.0.0",
     "whois": "^2.13.7"
   }
